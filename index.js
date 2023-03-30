@@ -17,32 +17,39 @@ app.get('/', (req, res) => {
 });
 
 
-app.listen(3000, () => {
-  console.log('Server listening on port 3000');
+app.listen(process.env.PORT, () => {
+  console.log('Server listening on port ' + process.env.PORT);
 });
 
 
-app.post('/payment-sheet', async function(req, res) {
+app.post('/payment-sheet', async function (req, res) {
   // Use an existing Customer ID if this is a returning customer.
-  const customer = await stripe.customers.create();
-  const ephemeralKey = await stripe.ephemeralKeys.create(
-    { customer: customer.id },
-    { apiVersion: '2022-11-15' }
-  );
 
-  const { body } = req;
+  try {
 
-  const { items } = body;
+    const customer = await stripe.customers.create();
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customer.id },
+      { apiVersion: '2022-11-15' }
+    );
 
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(items.amount * 100), // Convert to cents
-    currency: "usd",
-  });
+    const { body } = req;
 
-  res.json({
-    paymentIntent: paymentIntent.client_secret,
-    ephemeralKey: ephemeralKey.secret,
-    customer: customer.id,
-    publishableKey: process.env.PUBLISH_KEY
-  });
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(body?.amount * 100), // Convert to cents
+      currency: "usd",
+    });
+
+    res.json({
+      paymentIntent: paymentIntent.client_secret,
+      ephemeralKey: ephemeralKey.secret,
+      customer: customer.id,
+      publishableKey: process.env.PUBLISH_KEY
+    });
+  } catch (e) {
+    console.log("ERROR", e)
+    res.status(500).json({ error: e.message });
+  }
+
 });
